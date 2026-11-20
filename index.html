@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Julia Just Nails</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@500;600&display=swap">
+<style>
+:root {
+  --bg: #fbf6f8; --surface: #ffffff; --surface2: #f3e9f0; --fg: #2b2030; --muted: #7d6e85;
+  --line: #e8dbe4; --accent: #a8285a; --accent-fg: #ffffff; --accent-soft: #f6dce8; --err: #b3261e;
+  --display: "Unbounded", "Manrope", system-ui, sans-serif;
+  --text: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #171119; --surface: #231a26; --surface2: #2e2332; --fg: #f4eaf3; --muted: #aa9bb2;
+    --line: #3a2d3f; --accent: #ec6fa0; --accent-fg: #2b0f1c; --accent-soft: #43202f; --err: #ff8a80;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body { background: var(--bg); color: var(--fg); font: 15px/1.45 var(--text); padding: 0 16px; }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.app { max-width: 440px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
+header { padding: 20px 0 12px; display: flex; align-items: center; gap: 14px; }
+.avatar { width: 52px; height: 52px; border-radius: 50%; background: var(--accent-soft); display: grid; place-items: center; flex: none; }
+.brand h1 { font-family: var(--display); font-weight: 600; font-size: 17px; margin: 0; }
+.brand p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+main { flex: 1; padding-bottom: 16px; }
+h2 { font-family: var(--display); font-weight: 500; font-size: 15px; margin: 18px 0 10px; }
+.hint { color: var(--muted); font-size: 13px; margin: 0 0 12px; }
+.err { color: var(--err); font-size: 14px; margin: 10px 0; }
+.svc { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin-bottom: 10px; display: grid; gap: 4px; }
+.svc-top { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+.svc-name { font-weight: 700; }
+.svc-price { font-weight: 800; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.svc-meta { color: var(--muted); font-size: 13px; }
+.svc-act { margin-top: 8px; }
+.btn { background: var(--accent); color: var(--accent-fg); border: 0; border-radius: 12px; padding: 12px 16px; font-weight: 700; width: 100%; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn.ghost { background: transparent; color: var(--accent); border: 1.5px solid var(--accent); }
+.btn.small { width: auto; padding: 8px 14px; font-size: 13px; border-radius: 10px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { border: 1.5px solid var(--line); background: var(--surface); border-radius: 12px; padding: 9px 12px; font-weight: 600; font-size: 14px; }
+.chip[aria-pressed="true"], .chip.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.chip small { display: block; font-weight: 500; color: var(--muted); font-size: 12px; }
+.chip[aria-pressed="true"] small { color: inherit; opacity: .8; }
+.dates { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: thin; }
+.day { flex: none; width: 56px; text-align: center; padding: 8px 0; }
+.day b { display: block; font-size: 17px; font-variant-numeric: tabular-nums; }
+.day span { font-size: 12px; color: var(--muted); }
+.day[aria-pressed="true"] span { color: inherit; }
+.day:disabled { opacity: .35; cursor: not-allowed; }
+.slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.slot { padding: 10px 0; text-align: center; font-variant-numeric: tabular-nums; }
+.slot:disabled { text-decoration: line-through; opacity: .4; cursor: not-allowed; background: var(--surface2); }
+label { display: block; font-size: 13px; color: var(--muted); margin: 12px 0 5px; }
+input[type=text], input[type=tel], textarea { width: 100%; border: 1.5px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 12px; padding: 12px; font: inherit; }
+textarea { resize: vertical; min-height: 64px; }
+.sum { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin: 16px 0 12px; }
+.sum-row { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; font-size: 14px; }
+.sum-row span:first-child { color: var(--muted); }
+.sum-row.total { border-top: 1px dashed var(--line); margin-top: 6px; padding-top: 9px; font-weight: 800; font-size: 16px; }
+.sum-row.total span:first-child { color: var(--fg); }
+.done { text-align: center; padding: 28px 0 8px; }
+.done .tick { width: 64px; height: 64px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; margin: 0 auto 14px; }
+.done h2 { margin-top: 0; font-size: 17px; }
+.note { background: var(--surface2); border-radius: 12px; padding: 10px 12px; font-size: 13px; color: var(--muted); margin-top: 14px; text-align: left; }
+.cats { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.work { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; }
+.work svg, .work img { display: block; width: 100%; height: auto; aspect-ratio: 130 / 64; object-fit: cover; }
+.work-body { padding: 10px 12px 12px; display: grid; gap: 8px; }
+.work-name { font-weight: 700; font-size: 14px; }
+.work-cat { color: var(--muted); font-size: 12px; margin-top: -6px; }
+nav { position: sticky; bottom: 0; background: var(--bg); border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(3, 1fr); padding: 6px 0 calc(6px + env(safe-area-inset-bottom, 0px)); margin: 0 -16px; }
+nav button { background: none; border: 0; padding: 8px 4px; border-radius: 10px; display: grid; justify-items: center; gap: 2px; font-size: 12px; font-weight: 600; color: var(--muted); }
+nav button[aria-current="page"] { color: var(--accent); }
+nav svg { width: 22px; height: 22px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="avatar" aria-hidden="true">
+      <svg width="30" height="30" viewBox="0 0 30 30" fill="none"><path d="M9 26V11c0-4 2-7 6-7s6 3 6 7v15z" fill="var(--accent)"/><path d="M12 9c.5-2 1.5-3 3-3" stroke="#fff" stroke-width="1.6" stroke-linecap="round" opacity=".7"/></svg>
+    </div>
+    <div class="brand"><h1>Julia Just Nails</h1><p>Мастер ногтевого сервиса · Юлия</p></div>
+  </header>
+  <main id="view"></main>
+  <nav aria-label="Разделы">
+    <button data-tab="services"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 7h14M5 12h14M5 17h9"/></svg>Услуги</button>
+    <button data-tab="book"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M8 3v4M16 3v4M4 10h16"/></svg>Запись</button>
+    <button data-tab="works"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg>Работы</button>
+  </nav>
+</div>
+
+<script>
+/* ============ НАСТРОЙКИ: меняйте только этот блок ============ */
+var CONFIG = {
+  // Адрес веб-приложения Google (шаг 4 в инструкции). Пока пусто, страница работает в демо-режиме.
+  API_URL: "",
+  PHONE: "913084227",
+  HOURS: [10, 11, 12, 13, 14, 15, 16, 17, 18],   // время начала записи
+  END_HOUR: 19,                                  // до скольки работает мастер
+  DAYS_AHEAD: 14,
+  // Цены и длительность (min). Те же значения должны стоять в Code.gs.
+  SERVICES: [
+    { id: "classic",  name: "Маникюр классический", price: 90000,  min: 60,  desc: "Обработка кутикулы, форма, уход" },
+    { id: "gel",      name: "Маникюр + гель-лак",   price: 150000, min: 120, desc: "Обработка и стойкое покрытие" },
+    { id: "strength", name: "Укрепление",           price: 170000, min: 120, desc: "Укрепление натуральной пластины + покрытие" },
+    { id: "extend",   name: "Наращивание гелем",    price: 250000, min: 180, desc: "Моделирование формы и длины, покрытие" }
+  ],
+  ADDONS: [
+    { id: "remove", name: "Снятие", price: 20000 },
+    { id: "french", name: "Френч",  price: 25000 },
+    { id: "art",    name: "Дизайн", price: 30000 }
+  ],
+  // Работы. Для настоящего фото положите файл в папку photos и впишите img: "photos/1.jpg".
+  // Пока img пустой, показывается нарисованный эскиз.
+  WORKS: [
+    { name: "Молочный нюд",        cat: "Нюд",         img: "", svc: "gel",    base: ["#ecd3c6","#ecd3c6","#ecd3c6","#ecd3c6","#ecd3c6"] },
+    { name: "Розовый нюд",         cat: "Нюд",         img: "", svc: "gel",    base: ["#e6b8bf","#e6b8bf","#e6b8bf","#e6b8bf","#e6b8bf"] },
+    { name: "Классический френч",  cat: "Френч",       img: "", svc: "classic", addon: "french", tip: "#ffffff", base: ["#f1d9cf","#f1d9cf","#f1d9cf","#f1d9cf","#f1d9cf"] },
+    { name: "Цветной френч",       cat: "Френч",       img: "", svc: "gel",    addon: "french", tip: "#c2336b", base: ["#f1d9cf","#f1d9cf","#f1d9cf","#f1d9cf","#f1d9cf"] },
+    { name: "Бордо",               cat: "Яркие",       img: "", svc: "gel",    base: ["#7b1a3a","#7b1a3a","#7b1a3a","#7b1a3a","#7b1a3a"] },
+    { name: "Градиент закат",      cat: "Яркие",       img: "", svc: "gel",    addon: "art", base: ["#f4a261","#ee7b6b","#e0507c","#b8408f","#7d4aa6"] },
+    { name: "Миндаль, длина M",    cat: "Наращивание", img: "", svc: "extend", long: true, base: ["#e9c9d4","#e9c9d4","#e9c9d4","#e9c9d4","#e9c9d4"] },
+    { name: "Длинный френч",       cat: "Наращивание", img: "", svc: "extend", addon: "french", long: true, tip: "#ffffff", base: ["#f1d9cf","#f1d9cf","#f1d9cf","#f1d9cf","#f1d9cf"] }
+  ],
+  CATS: ["Все", "Нюд", "Френч", "Яркие", "Наращивание"]
+};
+/* ============================================================= */
+
+(function () {
+  var MONTHS = ["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"];
+  var WD = ["вс","пн","вт","ср","чт","пт","сб"];
+  var tg = window.Telegram && window.Telegram.WebApp;
+  var tgUser = tg && tg.initDataUnsafe && tg.initDataUnsafe.user;
+  if (tg) { try { tg.ready(); tg.expand(); } catch (e) {} }
+
+  var S = { tab: "services", svc: null, addons: {}, date: null, time: null,
+            name: tgUser && tgUser.first_name ? tgUser.first_name : "", phone: "", comment: "",
+            done: false, cat: "Все", busy: {}, slotsState: "loading", sending: false, error: "" };
+  var view = document.getElementById("view");
+
+  function fmt(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " сум"; }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  function svcById(id) { return CONFIG.SERVICES.filter(function (x) { return x.id === id; })[0]; }
+  function pad(n) { return n < 10 ? "0" + n : "" + n; }
+  function key(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+  function dateLabel(k) { var p = k.split("-"), d = new Date(+p[0], +p[1] - 1, +p[2]); return d.getDate() + " " + MONTHS[d.getMonth()] + ", " + WD[d.getDay()]; }
+  function total() {
+    var t = S.svc ? svcById(S.svc).price : 0;
+    CONFIG.ADDONS.forEach(function (a) { if (S.addons[a.id]) t += a.price; });
+    return t;
+  }
+  function days() {
+    var out = [], base = new Date();
+    base.setHours(12, 0, 0, 0);
+    for (var i = 0; i < CONFIG.DAYS_AHEAD; i++) out.push(new Date(base.getTime() + i * 86400000));
+    return out;
+  }
+  function slotFree(dateKey, hour) {
+    var min = S.svc ? svcById(S.svc).min : 60, need = Math.ceil(min / 60), now = new Date();
+    if (hour + need > CONFIG.END_HOUR) return false;
+    if (dateKey === key(now) && hour <= now.getHours()) return false;
+    for (var i = 0; i < need; i++) if (S.busy[dateKey + " " + (hour + i)]) return false;
+    return true;
+  }
+  function fixTime() { if (S.date && S.time && !slotFree(S.date, parseInt(S.time, 10))) S.time = null; }
+
+  /* ---------- связь с таблицей ---------- */
+  function loadSlots() {
+    S.slotsState = "loading";
+    if (!CONFIG.API_URL) {                       // демо-режим: часть окон занята условно
+      S.busy = {};
+      days().forEach(function (d) {
+        CONFIG.HOURS.forEach(function (h) { if (((d.getDate() * 7 + h * 5) * 2654435761) % 7 < 2) S.busy[key(d) + " " + h] = true; });
+      });
+      S.slotsState = "ready"; return;
+    }
+    fetch(CONFIG.API_URL + "?t=" + Date.now())
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        S.busy = {}; (data.busy || []).forEach(function (k) { S.busy[k] = true; });
+        S.slotsState = "ready"; fixTime(); if (S.tab === "book") render();
+      })
+      .catch(function () { S.slotsState = "error"; if (S.tab === "book") render(); });
+  }
+
+  function submit() {
+    S.sending = true; S.error = ""; render();
+    var payload = { service: S.svc, addons: Object.keys(S.addons).filter(function (k) { return S.addons[k]; }),
+                    date: S.date, time: S.time, name: S.name, phone: S.phone, comment: S.comment,
+                    tgId: tgUser ? tgUser.id : "" };
+    function ok() {
+      S.sending = false; S.done = true; render(); window.scrollTo(0, 0);
+      if (tg && tg.requestWriteAccess) { try { tg.requestWriteAccess(function () {}); } catch (e) {} }
+    }
+    if (!CONFIG.API_URL) { setTimeout(ok, 400); return; }
+    fetch(CONFIG.API_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) })
+      .then(function (r) { return r.json(); })
+      .then(function (res) {
+        if (res.ok) { ok(); return; }
+        S.sending = false;
+        if (res.error === "taken") { S.error = "Это время только что заняли. Выберите другое."; S.time = null; loadSlots(); }
+        else S.error = res.error || "Не удалось отправить. Попробуйте ещё раз.";
+        render();
+      })
+      .catch(function () { S.sending = false; S.error = "Нет связи. Проверьте интернет или позвоните: " + CONFIG.PHONE; render(); });
+  }
+
+  /* ---------- экраны ---------- */
+  function sketch(d) {
+    var h = d.long ? 46 : 34, parts = "", i;
+    for (i = 0; i < 5; i++) {
+      var x = 10 + i * 22, top = d.long ? 6 : 14, w = 18, r = d.long ? 8 : 7;
+      if (i === 0 || i === 4) top += 8; if (i === 2) top -= 3;
+      var p = "M" + x + " " + (top + h) + "V" + (top + r) + "Q" + x + " " + top + " " + (x + r) + " " + top + "H" + (x + w - r) + "Q" + (x + w) + " " + top + " " + (x + w) + " " + (top + r) + "V" + (top + h) + "Z";
+      parts += '<path d="' + p + '" fill="' + d.base[i] + '"/>';
+      if (d.tip) parts += '<path d="M' + x + " " + (top + r) + "Q" + x + " " + top + " " + (x + r) + " " + top + "H" + (x + w - r) + "Q" + (x + w) + " " + top + " " + (x + w) + " " + (top + r) + "V" + (top + 12) + "Q" + (x + w / 2) + " " + (top + 7) + " " + x + " " + (top + 12) + 'Z" fill="' + d.tip + '"/>';
+      parts += '<path d="M' + (x + 4) + " " + (top + 8) + "V" + (top + 14) + '" stroke="#fff" stroke-width="1.6" stroke-linecap="round" opacity=".5"/>';
+    }
+    return '<svg viewBox="0 0 130 64" role="img" aria-label="' + esc(d.name) + '"><rect width="130" height="64" fill="var(--surface2)"/>' + parts + "</svg>";
+  }
+  function sumRow(a, b) { return '<div class="sum-row"><span>' + a + "</span><span>" + esc(b) + "</span></div>"; }
+
+  function renderServices() {
+    var h = "<h2>Услуги и цены</h2>";
+    CONFIG.SERVICES.forEach(function (s) {
+      h += '<div class="svc"><div class="svc-top"><span class="svc-name">' + esc(s.name) + '</span><span class="svc-price">' + fmt(s.price) + "</span></div>" +
+        '<div class="svc-meta">' + esc(s.desc) + " · " + (s.min / 60) + " ч</div>" +
+        '<div class="svc-act"><button class="btn small" data-pick="' + s.id + '">Записаться</button></div></div>';
+    });
+    h += '<h2>Дополнительно</h2><div class="row">';
+    CONFIG.ADDONS.forEach(function (a) { h += '<span class="chip on">' + esc(a.name) + " +" + fmt(a.price) + "</span>"; });
+    view.innerHTML = h + "</div>";
+  }
+
+  function renderBook() {
+    if (S.done) return renderDone();
+    var h = '<h2>Запись на маникюр</h2><p class="hint">Выберите услугу, день и время. Запись сразу придёт Юлии.</p><div class="row" role="group" aria-label="Услуга">';
+    CONFIG.SERVICES.forEach(function (s) {
+      h += '<button class="chip" aria-pressed="' + (S.svc === s.id) + '" data-svc="' + s.id + '">' + esc(s.name) + "<small>" + fmt(s.price) + " · " + (s.min / 60) + " ч</small></button>";
+    });
+    h += '</div><h2>Дополнительно</h2><div class="row" role="group" aria-label="Дополнительно">';
+    CONFIG.ADDONS.forEach(function (a) {
+      h += '<button class="chip" aria-pressed="' + !!S.addons[a.id] + '" data-addon="' + a.id + '">' + esc(a.name) + "<small>+" + fmt(a.price) + "</small></button>";
+    });
+    h += '</div><h2>День</h2><div class="dates" role="group" aria-label="День">';
+    days().forEach(function (d) {
+      var k = key(d);
+      h += '<button class="chip day" aria-pressed="' + (S.date === k) + '" data-date="' + k + '"' + (d.getDay() === 0 ? " disabled" : "") + "><span>" + WD[d.getDay()] + "</span><b>" + d.getDate() + "</b></button>";
+    });
+    h += "</div>";
+    if (S.date) {
+      h += "<h2>Время</h2>";
+      if (S.slotsState === "loading") h += '<p class="hint">Загружаю свободное время…</p>';
+      else if (S.slotsState === "error") h += '<p class="err">Не удалось загрузить время. Позвоните: ' + esc(CONFIG.PHONE) + "</p>";
+      h += '<div class="slots" role="group" aria-label="Время">';
+      CONFIG.HOURS.forEach(function (hr) {
+        var t = hr + ":00";
+        h += '<button class="chip slot" aria-pressed="' + (S.time === t) + '" data-time="' + t + '"' + (S.slotsState !== "ready" || !slotFree(S.date, hr) ? " disabled" : "") + ">" + t + "</button>";
+      });
+      h += "</div>";
+    }
+    h += '<h2>Контакты</h2>' +
+      '<label for="f-name">Ваше имя</label><input id="f-name" type="text" autocomplete="name" value="' + esc(S.name) + '" placeholder="Например, Малика">' +
+      '<label for="f-phone">Телефон</label><input id="f-phone" type="tel" autocomplete="tel" value="' + esc(S.phone) + '" placeholder="+998 90 123 45 67">' +
+      '<label for="f-comment">Пожелания к дизайну</label><textarea id="f-comment" placeholder="Цвет, длина, картинка из группы">' + esc(S.comment) + "</textarea>";
+    h += '<div class="sum">' + sumRow("Услуга", S.svc ? svcById(S.svc).name : "не выбрана");
+    var ad = CONFIG.ADDONS.filter(function (a) { return S.addons[a.id]; }).map(function (a) { return a.name; });
+    if (ad.length) h += sumRow("Дополнительно", ad.join(", "));
+    h += sumRow("Когда", S.date && S.time ? dateLabel(S.date) + ", " + S.time : "не выбрано");
+    h += '<div class="sum-row total"><span>Итого</span><span>' + (S.svc ? fmt(total()) : "—") + "</span></div></div>";
+    if (S.error) h += '<p class="err" role="alert">' + esc(S.error) + "</p>";
+    h += '<button class="btn" id="send"' + (ready() && !S.sending ? "" : " disabled") + ">" + (S.sending ? "Отправляю…" : "Записаться") + "</button>";
+    if (!ready() && !S.sending) h += '<p class="hint" style="margin-top:8px;text-align:center">Нужны услуга, время, имя и телефон</p>';
+    view.innerHTML = h;
+    bindInputs();
+  }
+  function ready() { return S.svc && S.date && S.time && S.name.trim() && S.phone.replace(/\D/g, "").length >= 7; }
+  function bindInputs() {
+    var n = document.getElementById("f-name"), p = document.getElementById("f-phone"), c = document.getElementById("f-comment"), b = document.getElementById("send");
+    function upd() { S.name = n.value; S.phone = p.value; S.comment = c.value; if (b && !S.sending) b.disabled = !ready(); }
+    [n, p, c].forEach(function (el) { el.addEventListener("input", upd); });
+  }
+
+  function renderDone() {
+    view.innerHTML = '<div class="done"><div class="tick"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>' +
+      "<h2>Вы записаны</h2>" +
+      '<div class="sum" style="text-align:left">' + sumRow("Услуга", svcById(S.svc).name) + sumRow("Когда", dateLabel(S.date) + ", " + S.time) + sumRow("Имя", S.name) + sumRow("Телефон", S.phone) +
+      '<div class="sum-row total"><span>Итого</span><span>' + fmt(total()) + "</span></div></div>" +
+      '<div class="note">Юлия получила вашу запись. Если нужно изменить время, позвоните: ' + esc(CONFIG.PHONE) + "." + (CONFIG.API_URL ? "" : " Демо-режим: запись никуда не отправлена.") + "</div>" +
+      '<p style="margin-top:16px"><button class="btn ghost" id="again">Новая запись</button></p></div>';
+  }
+
+  function renderWorks() {
+    var h = '<h2>Работы</h2><div class="cats">';
+    CONFIG.CATS.forEach(function (c) { h += '<button class="chip' + (S.cat === c ? " on" : "") + '" data-cat="' + esc(c) + '" aria-pressed="' + (S.cat === c) + '">' + esc(c) + "</button>"; });
+    h += '</div><div class="grid">';
+    CONFIG.WORKS.forEach(function (d, i) {
+      if (S.cat !== "Все" && d.cat !== S.cat) return;
+      h += '<div class="work">' + (d.img ? '<img src="' + esc(d.img) + '" alt="' + esc(d.name) + '" loading="lazy">' : sketch(d)) +
+        '<div class="work-body"><div class="work-name">' + esc(d.name) + '</div><div class="work-cat">' + esc(d.cat) + '</div><button class="btn small" data-want="' + i + '">Хочу такой же</button></div></div>';
+    });
+    view.innerHTML = h + "</div>";
+  }
+
+  function render() {
+    var navs = document.querySelectorAll("nav button");
+    for (var i = 0; i < navs.length; i++) {
+      if (navs[i].getAttribute("data-tab") === S.tab) navs[i].setAttribute("aria-current", "page"); else navs[i].removeAttribute("aria-current");
+    }
+    if (S.tab === "services") renderServices(); else if (S.tab === "book") renderBook(); else renderWorks();
+  }
+
+  document.addEventListener("click", function (e) {
+    var t = e.target.closest("button");
+    if (!t) return;
+    var v;
+    if ((v = t.getAttribute("data-tab"))) { S.tab = v; if (v === "book" && !S.done) loadSlots(); render(); window.scrollTo(0, 0); }
+    else if ((v = t.getAttribute("data-pick"))) { S.svc = v; S.tab = "book"; S.done = false; S.error = ""; loadSlots(); fixTime(); render(); window.scrollTo(0, 0); }
+    else if ((v = t.getAttribute("data-svc"))) { S.svc = v; fixTime(); render(); }
+    else if ((v = t.getAttribute("data-addon"))) { S.addons[v] = !S.addons[v]; render(); }
+    else if ((v = t.getAttribute("data-date"))) { S.date = v; S.time = null; render(); }
+    else if ((v = t.getAttribute("data-time"))) { S.time = v; render(); }
+    else if ((v = t.getAttribute("data-cat"))) { S.cat = v; render(); }
+    else if ((v = t.getAttribute("data-want"))) {
+      var d = CONFIG.WORKS[+v]; S.svc = d.svc; S.addons = {}; if (d.addon) S.addons[d.addon] = true;
+      S.comment = "Хочу дизайн «" + d.name + "»"; S.tab = "book"; S.done = false; S.error = ""; loadSlots(); fixTime(); render(); window.scrollTo(0, 0);
+    }
+    else if (t.id === "send") { submit(); }
+    else if (t.id === "again") { S.svc = null; S.addons = {}; S.date = null; S.time = null; S.comment = ""; S.done = false; S.error = ""; loadSlots(); render(); }
+  });
+
+  loadSlots();
+  render();
+})();
+</script>
+</body>
+</html>
