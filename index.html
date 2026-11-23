@@ -28,7 +28,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .app { max-width: 440px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
 header { padding: 20px 0 12px; display: flex; align-items: center; gap: 14px; }
-.avatar { width: 52px; height: 52px; border-radius: 50%; background: var(--accent-soft); display: grid; place-items: center; flex: none; }
+.avatar { width: 52px; height: 52px; border-radius: 50%; background: var(--accent-soft); display: grid; place-items: center; flex: none; overflow: hidden; }
+.avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+#bg, #bg-veil { position: fixed; inset: 0; z-index: -1; pointer-events: none; }
+#bg { background-size: cover; background-position: center; }
+#bg-veil { background: var(--bg); }
 .brand h1 { font-family: var(--display); font-weight: 600; font-size: 17px; margin: 0; }
 .brand p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
 main { flex: 1; padding-bottom: 16px; }
@@ -85,6 +89,8 @@ nav svg { width: 22px; height: 22px; }
 </style>
 </head>
 <body>
+<div id="bg" aria-hidden="true" hidden></div>
+<div id="bg-veil" aria-hidden="true" hidden></div>
 <div class="app">
   <header>
     <div class="avatar" aria-hidden="true">
@@ -106,7 +112,11 @@ var CONFIG = {
   // Адрес веб-приложения Google (шаг 4 в инструкции). Пока пусто, страница работает в демо-режиме.
   API_URL: "https://script.google.com/macros/s/AKfycbxohHpPwKrakUyKKfNgg05Z7pnzoj49KT2g83bulUwyX7Yi8Wg4A0h4IfPxO4FAk8ZkVA/exec",
   PHONE: "913084227",
-  HOURS: [9, 10, 11, 12, 13, 14, 15, 16, 17, 18],   // время начала записи
+  // Картинки: загрузите файл в репозиторий (Add file → Upload files) и впишите его имя, например "avatar.jpg".
+  AVATAR: "avatar.jpg", // фото в кружке вверху вместо значка. Пусто = значок
+  BACKGROUND: "",      // фоновая картинка всего приложения. Пусто = обычный фон
+  BACKGROUND_VEIL: 0.85, // насколько фон осветлён: 0 = картинка как есть, 1 = картинки не видно
+  HOURS: [10, 11, 12, 13, 14, 15, 16, 17, 18],   // время начала записи
   END_HOUR: 19,                                  // до скольки работает мастер
   DAYS_AHEAD: 14,
   // Цены и длительность (min). Те же значения должны стоять в Code.gs.
@@ -121,17 +131,17 @@ var CONFIG = {
     { id: "french", name: "Френч",  price: 25000 },
     { id: "art",    name: "Дизайн", price: 30000 }
   ],
-  // Работы. Для настоящего фото положите файл в папку photos и впишите img: "photos/1.jpg".
-  // Пока img пустой, показывается нарисованный эскиз.
+  // Работы. Файл фото лежит в репозитории рядом с index.html, в img пишется его имя.
+  // Если img пустой, показывается нарисованный эскиз.
   WORKS: [
-    { name: "Молочный нюд",        cat: "Нюд",         img: "", svc: "gel",    base: ["#ecd3c6","#ecd3c6","#ecd3c6","#ecd3c6","#ecd3c6"] },
-    { name: "Розовый нюд",         cat: "Нюд",         img: "", svc: "gel",    base: ["#e6b8bf","#e6b8bf","#e6b8bf","#e6b8bf","#e6b8bf"] },
-    { name: "Классический френч",  cat: "Френч",       img: "", svc: "classic", addon: "french", tip: "#ffffff", base: ["#f1d9cf","#f1d9cf","#f1d9cf","#f1d9cf","#f1d9cf"] },
-    { name: "Цветной френч",       cat: "Френч",       img: "", svc: "gel",    addon: "french", tip: "#c2336b", base: ["#f1d9cf","#f1d9cf","#f1d9cf","#f1d9cf","#f1d9cf"] },
-    { name: "Бордо",               cat: "Яркие",       img: "", svc: "gel",    base: ["#7b1a3a","#7b1a3a","#7b1a3a","#7b1a3a","#7b1a3a"] },
-    { name: "Градиент закат",      cat: "Яркие",       img: "", svc: "gel",    addon: "art", base: ["#f4a261","#ee7b6b","#e0507c","#b8408f","#7d4aa6"] },
-    { name: "Миндаль, длина M",    cat: "Наращивание", img: "", svc: "extend", long: true, base: ["#e9c9d4","#e9c9d4","#e9c9d4","#e9c9d4","#e9c9d4"] },
-    { name: "Длинный френч",       cat: "Наращивание", img: "", svc: "extend", addon: "french", long: true, tip: "#ffffff", base: ["#f1d9cf","#f1d9cf","#f1d9cf","#f1d9cf","#f1d9cf"] }
+    { name: "Молочный нюд",        cat: "Нюд",         img: "nude-milk.jpg", svc: "gel",    base: ["#ecd3c6","#ecd3c6","#ecd3c6","#ecd3c6","#ecd3c6"] },
+    { name: "Розовый нюд",         cat: "Нюд",         img: "nude-pink.jpg", svc: "gel",    base: ["#e6b8bf","#e6b8bf","#e6b8bf","#e6b8bf","#e6b8bf"] },
+    { name: "Классический френч",  cat: "Френч",       img: "french-classic.jpg", svc: "classic", addon: "french", tip: "#ffffff", base: ["#f1d9cf","#f1d9cf","#f1d9cf","#f1d9cf","#f1d9cf"] },
+    { name: "Цветной френч",       cat: "Френч",       img: "french-color.jpg", svc: "gel",    addon: "french", tip: "#c2336b", base: ["#f1d9cf","#f1d9cf","#f1d9cf","#f1d9cf","#f1d9cf"] },
+    { name: "Бордо",               cat: "Яркие",       img: "bordo.jpg", svc: "gel",    base: ["#7b1a3a","#7b1a3a","#7b1a3a","#7b1a3a","#7b1a3a"] },
+    { name: "Градиент закат",      cat: "Яркие",       img: "sunset.jpg", svc: "gel",    addon: "art", base: ["#f4a261","#ee7b6b","#e0507c","#b8408f","#7d4aa6"] },
+    { name: "Миндаль, длина M",    cat: "Наращивание", img: "almond-m.jpg", svc: "extend", long: true, base: ["#e9c9d4","#e9c9d4","#e9c9d4","#e9c9d4","#e9c9d4"] },
+    { name: "Длинный френч",       cat: "Наращивание", img: "french-long.jpg", svc: "extend", addon: "french", long: true, tip: "#ffffff", base: ["#f1d9cf","#f1d9cf","#f1d9cf","#f1d9cf","#f1d9cf"] }
   ],
   CATS: ["Все", "Нюд", "Френч", "Яркие", "Наращивание"]
 };
@@ -143,6 +153,22 @@ var CONFIG = {
   var tg = window.Telegram && window.Telegram.WebApp;
   var tgUser = tg && tg.initDataUnsafe && tg.initDataUnsafe.user;
   if (tg) { try { tg.ready(); tg.expand(); } catch (e) {} }
+
+  if (CONFIG.AVATAR) {
+    var av = document.querySelector(".avatar"), im = new Image();
+    im.alt = "Юлия"; im.onload = function () { av.innerHTML = ""; av.appendChild(im); };
+    im.src = CONFIG.AVATAR;
+  }
+  if (CONFIG.BACKGROUND) {
+    var bgi = new Image();
+    bgi.onload = function () {
+      var bg = document.getElementById("bg"), veil = document.getElementById("bg-veil");
+      bg.style.backgroundImage = "url('" + CONFIG.BACKGROUND.replace(/'/g, "%27") + "')";
+      veil.style.opacity = String(CONFIG.BACKGROUND_VEIL);
+      bg.hidden = false; veil.hidden = false;
+    };
+    bgi.src = CONFIG.BACKGROUND;
+  }
 
   var S = { tab: "services", svc: null, addons: {}, date: null, time: null,
             name: tgUser && tgUser.first_name ? tgUser.first_name : "", phone: "", comment: "",
