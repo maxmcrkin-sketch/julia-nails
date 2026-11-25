@@ -119,7 +119,9 @@ var CONFIG = {
   HOURS: [10, 11, 12, 13, 14, 15, 16, 17, 18],   // время начала записи
   END_HOUR: 19,                                  // до скольки работает мастер
   DAYS_AHEAD: 14,
-  // Цены и длительность (min). Те же значения должны стоять в Code.gs.
+  WEEKLY_OFF: [0],                               // постоянные выходные: 0 = воскресенье, 1 = понедельник ... 6 = суббота (то же в Code.gs)
+  // Услуги и цены. Когда указан API_URL, приложение берёт актуальный список с листа «Услуги» в таблице,
+  // и цены здесь менять не нужно. Этот список показывается только в демо-режиме (без API_URL).
   SERVICES: [
     { id: "classic",  name: "Маникюр классический", price: 90000,  min: 60,  desc: "Обработка кутикулы, форма, уход" },
     { id: "gel",      name: "Маникюр + гель-лак",   price: 150000, min: 120, desc: "Обработка и стойкое покрытие" },
@@ -172,7 +174,8 @@ var CONFIG = {
 
   var S = { tab: "services", svc: null, addons: {}, date: null, time: null,
             name: tgUser && tgUser.first_name ? tgUser.first_name : "", phone: "", comment: "",
-            done: false, cat: "Все", busy: {}, slotsState: "loading", sending: false, error: "" };
+            done: false, cat: "Все", busy: {}, off: {}, slotsState: "loading", sending: false, error: "",
+            catalog: CONFIG.API_URL ? "loading" : "ready" };   // услуги и цены приходят из таблицы
   var view = document.getElementById("view");
 
   function fmt(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " сум"; }
@@ -215,9 +218,15 @@ var CONFIG = {
       .then(function (r) { return r.json(); })
       .then(function (data) {
         S.busy = {}; (data.busy || []).forEach(function (k) { S.busy[k] = true; });
-        S.slotsState = "ready"; fixTime(); if (S.tab === "book") render();
+        S.off = {}; (data.off || []).forEach(function (k) { S.off[k] = true; });
+        if (S.date && S.off[S.date]) { S.date = null; S.time = null; }
+        if (data.services && data.services.length) { CONFIG.SERVICES = data.services; CONFIG.ADDONS = data.addons || []; }
+        S.catalog = "ready";
+        if (S.svc && !svcById(S.svc)) { S.svc = null; S.time = null; }
+        Object.keys(S.addons).forEach(function (k) { if (!CONFIG.ADDONS.some(function (a) { return a.id === k; })) delete S.addons[k]; });
+        S.slotsState = "ready"; fixTime(); render();
       })
-      .catch(function () { S.slotsState = "error"; if (S.tab === "book") render(); });
+      .catch(function () { if (S.catalog === "loading") S.catalog = "error"; S.slotsState = "error"; render(); });
   }
 
   function submit() {
@@ -257,11 +266,19 @@ var CONFIG = {
   }
   function sumRow(a, b) { return '<div class="sum-row"><span>' + a + "</span><span>" + esc(b) + "</span></div>"; }
 
+  function catalogGuard() {
+    if (S.catalog === "loading") return '<p class="hint">Загружаю услуги…</p>';
+    if (S.catalog === "error") return '<p class="err">Не удалось загрузить услуги и цены. Позвоните: ' + esc(CONFIG.PHONE) + "</p>";
+    return "";
+  }
+
   function renderServices() {
+    var g = catalogGuard();
+    if (g) { view.innerHTML = "<h2>Услуги и цены</h2>" + g; return; }
     var h = "<h2>Услуги и цены</h2>";
     CONFIG.SERVICES.forEach(function (s) {
       h += '<div class="svc"><div class="svc-top"><span class="svc-name">' + esc(s.name) + '</span><span class="svc-price">' + fmt(s.price) + "</span></div>" +
-        '<div class="svc-meta">' + esc(s.desc) + " · " + (s.min / 60) + " ч</div>" +
+        '<div class="svc-meta">' + (s.desc ? esc(s.desc) + " · " : "") + (s.min / 60) + " ч</div>" +
         '<div class="svc-act"><button class="btn small" data-pick="' + s.id + '">Записаться</button></div></div>';
     });
     h += '<h2>Дополнительно</h2><div class="row">';
@@ -271,6 +288,8 @@ var CONFIG = {
 
   function renderBook() {
     if (S.done) return renderDone();
+    var g = catalogGuard();
+    if (g) { view.innerHTML = "<h2>Запись на маникюр</h2>" + g; return; }
     var h = '<h2>Запись на маникюр</h2><p class="hint">Выберите услугу, день и время. Запись сразу придёт Юлии.</p><div class="row" role="group" aria-label="Услуга">';
     CONFIG.SERVICES.forEach(function (s) {
       h += '<button class="chip" aria-pressed="' + (S.svc === s.id) + '" data-svc="' + s.id + '">' + esc(s.name) + "<small>" + fmt(s.price) + " · " + (s.min / 60) + " ч</small></button>";
@@ -282,7 +301,7 @@ var CONFIG = {
     h += '</div><h2>День</h2><div class="dates" role="group" aria-label="День">';
     days().forEach(function (d) {
       var k = key(d);
-      h += '<button class="chip day" aria-pressed="' + (S.date === k) + '" data-date="' + k + '"' + (d.getDay() === 0 ? " disabled" : "") + "><span>" + WD[d.getDay()] + "</span><b>" + d.getDate() + "</b></button>";
+      h += '<button class="chip day" aria-pressed="' + (S.date === k) + '" data-date="' + k + '"' + (CONFIG.WEEKLY_OFF.indexOf(d.getDay()) >= 0 || S.off[k] ? ' disabled title="Выходной"' : "") + "><span>" + WD[d.getDay()] + "</span><b>" + d.getDate() + "</b></button>";
     });
     h += "</div>";
     if (S.date) {
@@ -359,7 +378,8 @@ var CONFIG = {
     else if ((v = t.getAttribute("data-time"))) { S.time = v; render(); }
     else if ((v = t.getAttribute("data-cat"))) { S.cat = v; render(); }
     else if ((v = t.getAttribute("data-want"))) {
-      var d = CONFIG.WORKS[+v]; S.svc = d.svc; S.addons = {}; if (d.addon) S.addons[d.addon] = true;
+      var d = CONFIG.WORKS[+v]; S.svc = svcById(d.svc) ? d.svc : null; S.addons = {};
+      if (d.addon && CONFIG.ADDONS.some(function (a) { return a.id === d.addon; })) S.addons[d.addon] = true;
       S.comment = "Хочу дизайн «" + d.name + "»"; S.tab = "book"; S.done = false; S.error = ""; loadSlots(); fixTime(); render(); window.scrollTo(0, 0);
     }
     else if (t.id === "send") { submit(); }
