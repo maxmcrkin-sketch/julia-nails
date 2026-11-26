@@ -55,12 +55,18 @@ h2 { font-family: var(--display); font-weight: 500; font-size: 15px; margin: 18p
 .chip[aria-pressed="true"], .chip.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
 .chip small { display: block; font-weight: 500; color: var(--muted); font-size: 12px; }
 .chip[aria-pressed="true"] small { color: inherit; opacity: .8; }
-.dates { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: thin; }
-.day { flex: none; width: 56px; text-align: center; padding: 8px 0; }
-.day b { display: block; font-size: 17px; font-variant-numeric: tabular-nums; }
-.day span { font-size: 12px; color: var(--muted); }
-.day[aria-pressed="true"] span { color: inherit; }
-.day:disabled { opacity: .35; cursor: not-allowed; }
+.cal { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px; }
+.cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.cal-head b { font-size: 16px; }
+.cal-nav { width: 38px; height: 38px; border: 1.5px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 10px; font-size: 18px; line-height: 1; }
+.cal-nav:disabled { opacity: .3; cursor: not-allowed; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.cal-wd { text-align: center; font-size: 12px; color: var(--muted); padding: 4px 0; }
+.cal-d { padding: 10px 0; text-align: center; font-weight: 600; font-size: 14px; border-radius: 10px; border: 1.5px solid transparent; background: transparent; color: var(--fg); font-variant-numeric: tabular-nums; }
+.cal-d.today { color: var(--accent); }
+.cal-d[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.cal-d:disabled { opacity: .3; cursor: not-allowed; }
+.cal-empty { visibility: hidden; }
 .slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .slot { padding: 10px 0; text-align: center; font-variant-numeric: tabular-nums; }
 .slot:disabled { text-decoration: line-through; opacity: .4; cursor: not-allowed; background: var(--surface2); }
@@ -120,14 +126,14 @@ var CONFIG = {
   AVATAR: "avatar.jpg", // фото в кружке вверху вместо значка. Пусто = значок
   BACKGROUND: "",      // фоновая картинка всего приложения. Пусто = обычный фон
   BACKGROUND_VEIL: 0.85, // насколько фон осветлён: 0 = картинка как есть, 1 = картинки не видно
-  HOURS: [10, 11, 12, 13, 14, 15, 16, 17, 18],   // время начала записи
-  END_HOUR: 19,                                  // до скольки работает мастер
-  DAYS_AHEAD: 14,
+  HOURS: [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19],   // время начала записи
+  END_HOUR: 20,                                  // до скольки работает мастер
+  DAYS_AHEAD: 365,                               // на сколько дней вперёд можно записаться (то же число в Code.gs)
   WEEKLY_OFF: [0],                               // постоянные выходные: 0 = воскресенье, 1 = понедельник ... 6 = суббота (то же в Code.gs)
   // Услуги и цены. Когда указан API_URL, приложение берёт актуальный список с листа «Услуги» в таблице,
   // и цены здесь менять не нужно. Этот список показывается только в демо-режиме (без API_URL).
   SERVICES: [
-    { id: "classic",  name: "Маникюр классический", price: 90000,  min: 60,  desc: "Обработка кутикулы, форма, уход" },
+    { id: "classic",  name: "Маникюр классический", price: 90000,  min: 120,  desc: "Обработка кутикулы, форма, уход" },
     { id: "gel",      name: "Маникюр + гель-лак",   price: 150000, min: 120, desc: "Обработка и стойкое покрытие" },
     { id: "strength", name: "Укрепление",           price: 170000, min: 120, desc: "Укрепление натуральной пластины + покрытие" },
     { id: "extend",   name: "Наращивание гелем",    price: 250000, min: 180, desc: "Моделирование формы и длины, покрытие" }
@@ -178,7 +184,7 @@ var CONFIG = {
     bgi.src = CONFIG.BACKGROUND;
   }
 
-  var S = { tab: "services", svc: null, addons: {}, date: null, time: null,
+  var S = { tab: "services", svc: null, addons: {}, date: null, time: null, month: null,
             name: tgUser && tgUser.first_name ? tgUser.first_name : "", phone: "", comment: "",
             done: false, cat: "Все", busy: {}, off: {}, slotsState: "loading", sending: false, error: "",
             catalog: CONFIG.API_URL ? "loading" : "ready" };   // услуги и цены приходят из таблицы
@@ -201,8 +207,33 @@ var CONFIG = {
     for (var i = 0; i < CONFIG.DAYS_AHEAD; i++) out.push(new Date(base.getTime() + i * 86400000));
     return out;
   }
+  function needHours() { return S.svc && svcById(S.svc) ? Math.ceil(svcById(S.svc).min / 60) : 2; }   // сколько часов занимает работа
+  function hoursList() { var n = needHours(); return CONFIG.HOURS.filter(function (h) { return h + n <= CONFIG.END_HOUR; }); }
+  function dayHasFree(k) { return hoursList().some(function (h) { return slotFree(k, h); }); }
+  var MONTHS_NOM = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
+  var WD_MON = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+  function calendarHtml() {
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    var lastDay = new Date(today); lastDay.setDate(today.getDate() + CONFIG.DAYS_AHEAD);
+    if (!S.month) S.month = new Date(today.getFullYear(), today.getMonth(), 1);
+    var y = S.month.getFullYear(), mo = S.month.getMonth();
+    var prevOff = y * 12 + mo <= today.getFullYear() * 12 + today.getMonth();
+    var nextOff = y * 12 + mo >= lastDay.getFullYear() * 12 + lastDay.getMonth();
+    var h = '<div class="cal"><div class="cal-head"><button class="cal-nav" data-mon="-1" aria-label="Предыдущий месяц"' + (prevOff ? " disabled" : "") + '>‹</button>' +
+      "<b>" + MONTHS_NOM[mo] + " " + y + '</b><button class="cal-nav" data-mon="1" aria-label="Следующий месяц"' + (nextOff ? " disabled" : "") + ">›</button></div>" +
+      '<div class="cal-grid">';
+    WD_MON.forEach(function (w) { h += '<div class="cal-wd">' + w + "</div>"; });
+    var lead = (new Date(y, mo, 1).getDay() + 6) % 7, n = new Date(y, mo + 1, 0).getDate();
+    for (var i = 0; i < lead; i++) h += '<div class="cal-empty"></div>';
+    for (var d = 1; d <= n; d++) {
+      var dt = new Date(y, mo, d), k = key(dt);
+      var off = dt < today || dt > lastDay || CONFIG.WEEKLY_OFF.indexOf(dt.getDay()) >= 0 || S.off[k] || (S.slotsState === "ready" && !dayHasFree(k));
+      h += '<button class="cal-d' + (dt.getTime() === today.getTime() ? " today" : "") + '" aria-pressed="' + (S.date === k) + '" data-date="' + k + '"' + (off ? " disabled" : "") + ">" + d + "</button>";
+    }
+    return h + "</div></div>";
+  }
   function slotFree(dateKey, hour) {
-    var min = S.svc ? svcById(S.svc).min : 60, need = Math.ceil(min / 60), now = new Date();
+    var need = needHours(), now = new Date();
     if (hour + need > CONFIG.END_HOUR) return false;
     if (dateKey === key(now) && hour <= now.getHours()) return false;
     for (var i = 0; i < need; i++) if (S.busy[dateKey + " " + (hour + i)]) return false;
@@ -304,18 +335,13 @@ var CONFIG = {
     CONFIG.ADDONS.forEach(function (a) {
       h += '<button class="chip" aria-pressed="' + !!S.addons[a.id] + '" data-addon="' + a.id + '">' + esc(a.name) + "<small>+" + fmt(a.price) + "</small></button>";
     });
-    h += '</div><h2>День</h2><div class="dates" role="group" aria-label="День">';
-    days().forEach(function (d) {
-      var k = key(d);
-      h += '<button class="chip day" aria-pressed="' + (S.date === k) + '" data-date="' + k + '"' + (CONFIG.WEEKLY_OFF.indexOf(d.getDay()) >= 0 || S.off[k] ? ' disabled title="Выходной"' : "") + "><span>" + WD[d.getDay()] + "</span><b>" + d.getDate() + "</b></button>";
-    });
-    h += "</div>";
+    h += '</div><h2>День</h2>' + calendarHtml();
     if (S.date) {
       h += "<h2>Время</h2>";
       if (S.slotsState === "loading") h += '<p class="hint">Загружаю свободное время…</p>';
       else if (S.slotsState === "error") h += '<p class="err">Не удалось загрузить время. Позвоните: ' + esc(CONFIG.PHONE) + "</p>";
       h += '<div class="slots" role="group" aria-label="Время">';
-      CONFIG.HOURS.forEach(function (hr) {
+      hoursList().forEach(function (hr) {
         var t = hr + ":00";
         h += '<button class="chip slot" aria-pressed="' + (S.time === t) + '" data-time="' + t + '"' + (S.slotsState !== "ready" || !slotFree(S.date, hr) ? " disabled" : "") + ">" + t + "</button>";
       });
@@ -380,6 +406,7 @@ var CONFIG = {
     else if ((v = t.getAttribute("data-pick"))) { S.svc = v; S.tab = "book"; S.done = false; S.error = ""; loadSlots(); fixTime(); render(); window.scrollTo(0, 0); }
     else if ((v = t.getAttribute("data-svc"))) { S.svc = v; fixTime(); render(); }
     else if ((v = t.getAttribute("data-addon"))) { S.addons[v] = !S.addons[v]; render(); }
+    else if ((v = t.getAttribute("data-mon"))) { S.month = new Date(S.month.getFullYear(), S.month.getMonth() + (+v), 1); render(); }
     else if ((v = t.getAttribute("data-date"))) { S.date = v; S.time = null; render(); }
     else if ((v = t.getAttribute("data-time"))) { S.time = v; render(); }
     else if ((v = t.getAttribute("data-cat"))) { S.cat = v; render(); }
